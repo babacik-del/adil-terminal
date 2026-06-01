@@ -42,7 +42,7 @@ body{
     radial-gradient(1000px 500px at 110% 10%, rgba(124,92,255,.06), transparent 60%),
     var(--bg-0);
   color:var(--text-1);
-  overflow:hidden;
+  overflow-x:hidden;
 }
 
 /* ---------- Üst Bar (Top Nav) ---------- */
@@ -230,6 +230,152 @@ body{
 @keyframes flashDown{0%{background:rgba(255,51,102,.25)}100%{background:transparent}}
 .flash-up{animation:flashUp .6s ease-out}
 .flash-down{animation:flashDown .6s ease-out}
+/* =========================
+   MOBİL UYUMLULUK
+   ========================= */
+
+@media (max-width: 1024px){
+
+  body{
+    overflow:auto;
+  }
+
+  .layout{
+    display:flex;
+    flex-direction:column;
+    height:auto;
+  }
+
+  .panel{
+    border-right:none;
+    border-bottom:1px solid var(--border);
+    max-height:350px;
+  }
+
+  .center{
+    min-height:700px;
+  }
+
+  .symbol-bar{
+    flex-wrap:wrap;
+    gap:10px;
+    padding:10px;
+  }
+
+  .chart-toolbar{
+    flex-wrap:wrap;
+    padding:10px;
+  }
+
+  .search{
+    min-width:auto;
+    width:100%;
+  }
+
+  .topbar{
+    flex-wrap:wrap;
+    height:auto;
+    padding:10px;
+    gap:10px;
+  }
+
+  .nav{
+    width:100%;
+    overflow-x:auto;
+    margin-left:0;
+  }
+
+  .nav button{
+    white-space:nowrap;
+  }
+}
+
+@media (max-width: 768px){
+
+  .ticker{
+    display:none;
+  }
+
+  .logo{
+    font-size:15px;
+  }
+
+  .clock{
+    font-size:11px;
+  }
+
+  .symbol-bar .big-sym{
+    font-size:16px;
+  }
+
+  .symbol-bar .big-price{
+    font-size:18px;
+  }
+
+  .signal-strip{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:8px;
+  }
+
+  #chart{
+    height:400px !important;
+  }
+
+  #chart-rsi{
+    height:120px;
+  }
+
+  .stock-row{
+    grid-template-columns:55px 1fr auto;
+    padding:10px;
+  }
+
+  .ob-row,
+  .tns-row,
+  .ob-head{
+    font-size:10px;
+  }
+}
+
+@media (max-width: 480px){
+
+  .topbar{
+    padding:8px;
+  }
+
+  .search{
+    width:100%;
+  }
+
+  .search input{
+    font-size:12px;
+  }
+
+  .panel-header{
+    font-size:10px;
+  }
+
+  .symbol-bar{
+    padding:8px;
+  }
+
+  .big-price{
+    font-size:16px !important;
+  }
+
+  .big-sym{
+    font-size:14px !important;
+  }
+
+  .stat{
+    min-width:70px;
+  }
+
+  #chart{
+    height:320px !important;
+  }
+}
 </style>
 </head>
 <body>
