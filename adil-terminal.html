@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ADİL TERMİNAL — BIST Finansal Analiz Platformu</title>
+
+<!-- ApexCharts: Mum (candlestick) + teknik indikatör grafikleri için -->
+<script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+
+<style>
+/* =========================================================
+   ADİL TERMİNAL — DESIGN SYSTEM
+   Koyu tema, fütüristik siber-borsa atmosferi
+   ========================================================= */
+:root{
+  --bg-0:#07090d;          /* En koyu arka plan */
+  --bg-1:#0d1117;          /* Panel arka planı */
+  --bg-2:#141b24;          /* Kart arka planı */
+  --bg-3:#1b2330;          /* Hover / aktif */
+  --border:#1f2a37;
+  --text-1:#e6edf3;        /* Ana metin */
+  --text-2:#8b97a8;        /* İkincil metin */
+  --text-3:#5b6675;        /* Soluk metin */
+  --up:#00ff88;            /* Yükseliş (canlı yeşil) */
+  --down:#ff3366;          /* Düşüş   (canlı kırmızı) */
+  --accent:#00d4ff;        /* Vurgu (cyan) */
+  --accent-2:#7c5cff;      /* İkincil vurgu */
+  --warning:#ffb020;
+  --mono:'JetBrains Mono','Fira Code',Consolas,monospace;
+  --sans:'Inter','Segoe UI',system-ui,sans-serif;
+  --glow-up:0 0 12px rgba(0,255,136,.35);
+  --glow-down:0 0 12px rgba(255,51,102,.35);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--sans);
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(0,212,255,.06), transparent 60%),
+    radial-gradient(1000px 500px at 110% 10%, rgba(124,92,255,.06), transparent 60%),
+    var(--bg-0);
+  color:var(--text-1);
+  overflow:hidden;
+}
+
+/* ---------- Üst Bar (Top Nav) ---------- */
+.topbar{
+  height:56px;display:flex;align-items:center;gap:24px;
+  padding:0 20px;border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(13,17,23,.95),rgba(13,17,23,.7));
+  backdrop-filter:blur(10px);
+  position:relative;z-index:10;
+}
+.logo{
+  font-family:var(--mono);font-weight:700;letter-spacing:2px;font-size:18px;
+  background:linear-gradient(135deg,var(--accent),var(--up));
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  display:flex;align-items:center;gap:8px;
+}
+.logo::before{content:"◆";color:var(--accent);text-shadow:0 0 12px var(--accent)}
+.nav{display:flex;gap:4px;margin-left:24px}
+.nav button{
+  background:transparent;border:none;color:var(--text-2);
+  padding:8px 14px;border-radius:6px;font-size:13px;cursor:pointer;
+  font-family:var(--sans);transition:.15s;
+}
+.nav button:hover{background:var(--bg-2);color:var(--text-1)}
+.nav button.active{background:var(--bg-3);color:var(--accent);box-shadow:inset 0 -2px 0 var(--accent)}
+.search{
+  margin-left:auto;display:flex;align-items:center;gap:8px;
+  background:var(--bg-2);border:1px solid var(--border);
+  padding:6px 12px;border-radius:6px;min-width:280px;
+}
+.search input{
+  background:transparent;border:none;outline:none;color:var(--text-1);
+  font-family:var(--mono);font-size:13px;width:100%;
+}
+.clock{font-family:var(--mono);font-size:13px;color:var(--text-2)}
+.clock .dot{color:var(--up);animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.2}}
+
+/* ---------- Kayan Fiyat Bandı (Ticker Tape) ---------- */
+.ticker{
+  height:36px;border-bottom:1px solid var(--border);
+  background:var(--bg-1);overflow:hidden;position:relative;
+}
+.ticker-track{
+  display:flex;gap:32px;align-items:center;height:100%;
+  white-space:nowrap;animation:scroll 120s linear infinite;
+  padding-left:20px;
+}
+@keyframes scroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tick{display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:12px}
+.tick .sym{color:var(--text-1);font-weight:600}
+.tick .price{color:var(--text-2)}
+.tick.up .chg{color:var(--up)}
+.tick.down .chg{color:var(--down)}
+
+/* ---------- Ana Layout (3 sütun) ---------- */
+.layout{
+  display:grid;
+  grid-template-columns:280px 1fr 340px;
+  height:calc(100vh - 56px - 36px);
+}
+.panel{
+  border-right:1px solid var(--border);
+  background:var(--bg-1);overflow-y:auto;
+}
+.panel:last-child{border-right:none;border-left:1px solid var(--border)}
+.panel-header{
+  padding:12px 16px;font-size:11px;letter-spacing:1.5px;
+  color:var(--text-3);text-transform:uppercase;
+  border-bottom:1px solid var(--border);
+  display:flex;justify-content:space-between;align-items:center;
+  position:sticky;top:0;background:var(--bg-1);z-index:5;
+}
+
+/* ---------- Sol: Hisse Listesi (BIST) ---------- */
+.stock-list{display:flex;flex-direction:column}
+.stock-row{
+  display:grid;grid-template-columns:60px 1fr auto;
+  align-items:center;gap:8px;
+  padding:8px 16px;cursor:pointer;border-left:2px solid transparent;
+  transition:background .12s;
+}
+.stock-row:hover{background:var(--bg-2)}
+.stock-row.active{background:var(--bg-2);border-left-color:var(--accent)}
+.stock-row .sym{font-family:var(--mono);font-weight:600;font-size:13px}
+.stock-row .name{font-size:11px;color:var(--text-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stock-row .meta{text-align:right;font-family:var(--mono);font-size:12px}
+.stock-row .pct{font-size:11px}
+.up-c{color:var(--up)}.down-c{color:var(--down)}
+
+/* ---------- Orta: Grafik Paneli ---------- */
+.center{display:flex;flex-direction:column;background:var(--bg-0);overflow:hidden}
+.symbol-bar{
+  display:flex;align-items:center;gap:20px;
+  padding:14px 20px;border-bottom:1px solid var(--border);
+  background:var(--bg-1);
+}
+.symbol-bar .big-sym{font-family:var(--mono);font-size:20px;font-weight:700}
+.symbol-bar .big-name{font-size:12px;color:var(--text-2)}
+.symbol-bar .big-price{font-family:var(--mono);font-size:22px;font-weight:600}
+.symbol-bar .big-chg{font-family:var(--mono);font-size:13px;padding:3px 8px;border-radius:4px}
+.symbol-bar .big-chg.up{background:rgba(0,255,136,.12);color:var(--up);box-shadow:var(--glow-up)}
+.symbol-bar .big-chg.down{background:rgba(255,51,102,.12);color:var(--down);box-shadow:var(--glow-down)}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat .l{font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.5px}
+.stat .v{font-family:var(--mono);font-size:12px;color:var(--text-1)}
+
+/* Grafik üst toolbar: zaman dilimi + indikatör seçimi */
+.chart-toolbar{
+  display:flex;gap:8px;align-items:center;padding:8px 20px;
+  border-bottom:1px solid var(--border);background:var(--bg-1);
+}
+.chip{
+  background:var(--bg-2);border:1px solid var(--border);color:var(--text-2);
+  padding:5px 10px;border-radius:4px;font-size:11px;font-family:var(--mono);
+  cursor:pointer;transition:.12s;
+}
+.chip:hover{color:var(--text-1);border-color:var(--accent)}
+.chip.active{color:var(--accent);border-color:var(--accent);background:rgba(0,212,255,.08)}
+.sep{width:1px;height:18px;background:var(--border);margin:0 4px}
+
+#chart, #chart-rsi{padding:0 12px}
+#chart{flex:1;min-height:0}
+#chart-rsi{height:140px;border-top:1px solid var(--border)}
+
+/* AL/SAT sinyal kartı */
+.signal-strip{
+  display:flex;gap:12px;padding:10px 20px;border-top:1px solid var(--border);
+  background:var(--bg-1);align-items:center;
+}
+.signal-badge{
+  font-family:var(--mono);font-weight:700;font-size:13px;letter-spacing:1px;
+  padding:8px 16px;border-radius:6px;
+}
+.signal-badge.STRONG_BUY{background:rgba(0,255,136,.15);color:var(--up);box-shadow:var(--glow-up);border:1px solid var(--up)}
+.signal-badge.BUY{background:rgba(0,255,136,.08);color:var(--up);border:1px solid rgba(0,255,136,.3)}
+.signal-badge.NEUTRAL{background:rgba(139,151,168,.1);color:var(--text-2);border:1px solid var(--border)}
+.signal-badge.SELL{background:rgba(255,51,102,.08);color:var(--down);border:1px solid rgba(255,51,102,.3)}
+.signal-badge.STRONG_SELL{background:rgba(255,51,102,.15);color:var(--down);box-shadow:var(--glow-down);border:1px solid var(--down)}
+.signal-detail{font-size:12px;color:var(--text-2);font-family:var(--mono)}
+
+/* ---------- Sağ: Emir Defteri ---------- */
+.orderbook{display:flex;flex-direction:column;font-family:var(--mono);font-size:12px}
+.ob-head{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  padding:6px 16px;color:var(--text-3);font-size:10px;
+  text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);
+}
+.ob-row{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  padding:3px 16px;position:relative;
+}
+.ob-row .bar{
+  position:absolute;top:0;bottom:0;right:0;opacity:.12;z-index:0;
+}
+.ob-row.ask .bar{background:var(--down)}
+.ob-row.bid .bar{background:var(--up)}
+.ob-row > span{position:relative;z-index:1}
+.ob-row.ask .px{color:var(--down)}
+.ob-row.bid .px{color:var(--up)}
+.ob-spread{
+  padding:8px 16px;text-align:center;
+  background:var(--bg-2);border-top:1px solid var(--border);border-bottom:1px solid var(--border);
+  font-size:11px;color:var(--text-2);
+}
+
+/* Time & Sales (Gerçekleşen işlemler) */
+.tns{flex:1;overflow-y:auto;font-family:var(--mono);font-size:11px}
+.tns-row{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  padding:3px 16px;border-bottom:1px solid rgba(31,42,55,.4);
+}
+.tns-row.buy .px{color:var(--up)}
+.tns-row.sell .px{color:var(--down)}
+.tns-row .time{color:var(--text-3)}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:var(--bg-0)}
+::-webkit-scrollbar-thumb{background:var(--bg-3);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:#2a3544}
+
+/* Fiyat değişim flash animasyonu */
+@keyframes flashUp{0%{background:rgba(0,255,136,.25)}100%{background:transparent}}
+@keyframes flashDown{0%{background:rgba(255,51,102,.25)}100%{background:transparent}}
+.flash-up{animation:flashUp .6s ease-out}
+.flash-down{animation:flashDown .6s ease-out}
+</style>
+</head>
+<body>
+
+<!-- ============ ÜST BAR ============ -->
+<header class="topbar">
+  <div class="logo">ADİL TERMİNAL</div>
+  <nav class="nav">
+    <button class="active">Dashboard</button>
+    <button>Grafik</button>
+    <button>Emir Defteri</button>
+    <button>Bilanço</button>
+    <button>AL-SAT Robotu</button>
+  </nav>
+  <div class="search">
+    <span style="color:var(--text-3)">⌕</span>
+    <input id="searchInput" placeholder="Hisse ara (örn: THYAO, ASELS, GARAN...)" />
+  </div>
+  <div class="clock"><span class="dot">●</span> <span id="clock">--:--:--</span> BIST</div>
+</header>
+
+<!-- ============ KAYAN FİYAT BANDI ============ -->
+<div class="ticker"><div class="ticker-track" id="tickerTrack"></div></div>
+
+<!-- ============ ANA LAYOUT (3 sütun) ============ -->
+<main class="layout">
+
+  <!-- SOL: BIST HİSSE LİSTESİ -->
+  <aside class="panel">
+    <div class="panel-header">
+      <span>BIST Hisseleri</span>
+      <span id="stockCount" style="color:var(--accent)">0</span>
+    </div>
+    <div class="stock-list" id="stockList"></div>
+  </aside>
+
+  <!-- ORTA: GRAFİK + SİNYAL -->
+  <section class="center">
+    <!-- Seçili sembol bilgi şeridi -->
+    <div class="symbol-bar">
+      <div>
+        <div class="big-sym" id="selSym">THYAO</div>
+        <div class="big-name" id="selName">Türk Hava Yolları</div>
+      </div>
+      <div class="big-price" id="selPrice">0.00</div>
+      <div class="big-chg up" id="selChg">+0.00%</div>
+      <div class="stat"><span class="l">Yüksek</span><span class="v" id="selHigh">-</span></div>
+      <div class="stat"><span class="l">Düşük</span><span class="v" id="selLow">-</span></div>
+      <div class="stat"><span class="l">Hacim</span><span class="v" id="selVol">-</span></div>
+      <div class="stat"><span class="l">VWAP</span><span class="v" id="selVwap">-</span></div>
+    </div>
+
+    <!-- Grafik üst araç çubuğu -->
+    <div class="chart-toolbar">
+      <button class="chip">1d</button>
+      <button class="chip">5d</button>
+      <button class="chip active">1A</button>
+      <button class="chip">3A</button>
+      <button class="chip">1Y</button>
+      <div class="sep"></div>
+      <button class="chip active" data-ind="sma">SMA(20)</button>
+      <button class="chip active" data-ind="ema">EMA(50)</button>
+      <button class="chip" data-ind="bb">Bollinger</button>
+      <button class="chip active" data-ind="rsi">RSI</button>
+      <button class="chip" data-ind="macd">MACD</button>
+      <div style="margin-left:auto;color:var(--text-3);font-size:11px;font-family:var(--mono)">
+        Mum Grafik · Canlı
+      </div>
+    </div>
+
+    <!-- Ana mum grafiği -->
+    <div id="chart"></div>
+    <!-- RSI alt grafiği -->
+    <div id="chart-rsi"></div>
+
+    <!-- AL-SAT Sinyal Şeridi -->
+    <div class="signal-strip">
+      <div class="signal-badge BUY" id="signalBadge">AL</div>
+      <div class="signal-detail" id="signalDetail">RSI: 54.2 · MACD: ↑ · Trend: Yükseliş · Başarı oranı: %68</div>
+      <div style="margin-left:auto;color:var(--text-3);font-size:11px;font-family:var(--mono)">
+        Algoritmik Sinyal · Güncelleme: <span id="signalTime">--:--</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- SAĞ: EMİR DEFTERİ + TIME&SALES -->
+  <aside class="panel">
+    <div class="panel-header">
+      <span>Emir Defteri (Derinlik)</span>
+      <span id="obSym" style="color:var(--accent)">THYAO</span>
+    </div>
+
+    <div class="orderbook">
+      <div class="ob-head"><span>Miktar</span><span style="text-align:center">Fiyat</span><span style="text-align:right">Emir</span></div>
+      <!-- Satış (ask) kademeleri — yukarıdan aşağıya azalan -->
+      <div id="asks"></div>
+
+      <!-- Spread göstergesi -->
+      <div class="ob-spread" id="spread">Spread: -</div>
+
+      <!-- Alış (bid) kademeleri -->
+      <div id="bids"></div>
+    </div>
+
+    <div class="panel-header" style="border-top:1px solid var(--border)">
+      <span>Gerçekleşen İşlemler (Time & Sales)</span>
+    </div>
+    <div class="tns" id="tns"></div>
+  </aside>
+
+</main>
+
+<script>
+/* =============================================================
+   ADİL TERMİNAL — Frontend Mock Veri Motoru
+   NOT: Üretimde bu fonksiyonlar Python (Flask/FastAPI) backend'inden
+   WebSocket / REST üzerinden gelen canlı verilerle değiştirilecektir.
+   Burada gerçekçi simülasyon yapılmaktadır.
+   ============================================================= */
+
+/* ---------- 1) BIST HİSSE EVRENİ ----------
+   Tüm Borsa İstanbul (BIST) ana hisselerinin kapsamlı listesi. */
+const BIST_STOCKS = [
+  ["A1CAP","A1 Capital Yatırım"],["ACSEL","Acıselsan Acıpayam Selüloz"],["ADEL","Adel Kalemcilik"],
+  ["ADESE","Adese Gayrimenkul"],["AEFES","Anadolu Efes"],["AFYON","Afyon Çimento"],
+  ["AGESA","Agesa Hayat ve Emeklilik"],["AGHOL","AG Anadolu Grubu Holding"],["AGYO","Atakule GYO"],
+  ["AHGAZ","Ahlatçı Doğal Gaz"],["AKBNK","Akbank"],["AKCNS","Akçansa"],["AKENR","Akenerji"],
+  ["AKFGY","Akfen GYO"],["AKFYE","Akfen Yenilenebilir Enerji"],["AKGRT","Aksigorta"],
+  ["AKMGY","Akmerkez GYO"],["AKSA","Aksa"],["AKSEN","Aksa Enerji"],["AKSGY","Akiş GYO"],
+  ["AKSUE","Aksu Enerji"],["AKYHO","Akyürek Holding"],["ALARK","Alarko Holding"],
+  ["ALBRK","Albaraka Türk"],["ALCAR","Alarko Carrier"],["ALCTL","Alcatel Lucent"],
+  ["ALFAS","Alfa Solar Enerji"],["ALGYO","Alarko GYO"],["ALKA","Alkim Kağıt"],
+  ["ALKIM","Alkim Kimya"],["ALMAD","Altınyağ Madencilik"],["ANELE","Anel Elektrik"],
+  ["ANGEN","Anadolu Isuzu"],["ANHYT","Anadolu Hayat Emeklilik"],["ANSGR","Anadolu Sigorta"],
+  ["ARCLK","Arçelik"],["ARDYZ","Ard Yazılım"],["ARENA","Arena Bilgisayar"],["ARSAN","Arsan Tekstil"],
+  ["ARZUM","Arzum Elektrikli Ev Aletleri"],["ASELS","Aselsan"],["ASGYO","Aktif Bank Sukuk GYO"],
+  ["ASTOR","Astor Enerji"],["ASUZU","Anadolu Isuzu"],["ATAGY","Ata GYO"],["ATAKP","Atakey Patates"],
+  ["ATATP","Atlantik Petrol"],["ATEKS","Akın Tekstil"],["ATSYH","Atlantis Yatırım"],
+  ["AVGYO","Avrasya GYO"],["AVHOL","Avrupakent GYO"],["AVOD","A.V.O.D. Kurutulmuş Gıda"],
+  ["AVTUR","Avantaj Turizm"],["AYCES","Altınyunus Çeşme Turistik"],["AYDEM","Aydem Yenilenebilir Enerji"],
+  ["AYEN","Ayen Enerji"],["AYES","Aydem Enerji"],["AYGAZ","Aygaz"],["AZTEK","Aztek Teknoloji"],
+  ["BAGFS","Bagfaş"],["BAKAB","Bak Ambalaj"],["BANVT","Banvit"],["BARMA","Barmek Holding"],
+  ["BASCM","Baştaş Başkent Çimento"],["BASGZ","Başkent Doğalgaz"],["BAYRK","Bayrak EBT"],
+  ["BERA","Bera Holding"],["BFREN","Bosch Fren Sistemleri"],["BIENY","Bien Yapı Ürünleri"],
+  ["BIGCH","Bigchefs Çağrı Merkezi"],["BIMAS","BİM Birleşik Mağazalar"],["BIOEN","Bio Enerji"],
+  ["BIZIM","Bizim Toptan"],["BJKAS","Beşiktaş Futbol Yatırımları"],["BLCYT","Bilici Yatırım"],
+  ["BMSCH","BMS Çelik Hasır"],["BNTAS","Bantaş Bandırma Ambalaj"],["BOBET","Borçelik"],
+  ["BORLS","Borusan Lojistik"],["BORSK","Borsa İstanbul"],["BOSSA","Bossa"],["BRISA","Brisa"],
+  ["BRKSN","Berkosan Yalıtım"],["BRMEN","Birim Menkul"],["BRSAN","Borusan Mannesmann"],
+  ["BRYAT","Borusan Yatırım"],["BSOKE","Batısöke Söke Çimento"],["BTCIM","Batı Çimento"],
+  ["BUCIM","Bursa Çimento"],["BURCE","Burçelik"],["BURVA","Burçelik Vana"],["BVSAN","Bursa Vagon Sanayi"],
+  ["CANTE","Çan2 Termik"],["CCOLA","Coca-Cola İçecek"],["CELHA","Çelik Halat"],
+  ["CEMAS","Çemaş Döküm"],["CEMTS","Çemtaş"],["CIMSA","Çimsa"],["CLEBI","Çelebi Hava Servisi"],
+  ["CMBTN","Çimbeton"],["CMENT","Çimentaş"],["COSMO","Cosmos Yatırım"],["CRDFA","Creditwest Faktoring"],
+  ["CRFSA","CarrefourSA"],["CUSAN","Çuhadaroğlu Metal"],["CWENE","CW Enerji"],
+  ["DAGI","Dagi Yatırım"],["DAPGM","Dap Gayrimenkul"],["DARDL","Dardanel"],["DENGE","Denge Yatırım"],
+  ["DERIM","Derimod"],["DESA","Desa Deri"],["DESPC","Despec Bilgisayar"],["DEVA","Deva Holding"],
+  ["DGATE","Datagate Bilgisayar"],["DGGYO","Doğuş GYO"],["DGNMO","Doğanlar Mobilya"],
+  ["DIRIT","Diriteks Diriliş Tekstil"],["DITAS","Ditaş Doğan"],["DMSAS","Demisaş Döküm"],
+  ["DNISI","Dinarsu İmalat"],["DOAS","Doğuş Otomotiv"],["DOBUR","Doğan Burda"],["DOCO","Do&Co"],
+  ["DOFER","Doğtaş Kelebek Mobilya"],["DOGUB","Doğusan"],["DOHOL","Doğan Holding"],
+  ["DOKTA","Döktaş Dökümcülük"],["DURDO","Duran Doğan Basım"],["DYOBY","Dyo Boya"],
+  ["EBEBK","Ebebek Mağazacılık"],["ECILC","Eczacıbaşı İlaç"],["ECZYT","Eczacıbaşı Yatırım"],
+  ["EDATA","E-Data Teknoloji"],["EDIP","Edip Gayrimenkul"],["EGEEN","Ege Endüstri"],
+  ["EGEPO","Ege Profil"],["EGGUB","Ege Gübre"],["EGPRO","Ege Profil"],["EGSER","Ege Seramik"],
+  ["EKGYO","Emlak Konut GYO"],["EKIZ","Ekiz Kimya"],["EKOS","Ekos Lojistik"],["EKSUN","Eksun Gıda"],
+  ["ELITE","Elite Naturel Organik Gıda"],["EMKEL","Emek Elektrik"],["ENJSA","Enerjisa Enerji"],
+  ["ENKAI","Enka İnşaat"],["ENSRI","Ensari Deri"],["EPLAS","Egeplast"],["ERBOS","Erbosan"],
+  ["ERCB","Ercoreks"],["EREGL","Ereğli Demir Çelik"],["ERSU","Ersu Meyve ve Gıda"],
+  ["ESCAR","Es-Car Filo Kiralama"],["ESCOM","Escort Teknoloji"],["ESEN","Esenboğa Elektrik"],
+  ["ETILR","Etiler Marmaris Beach"],["EUHOL","Euro Yatırım Holding"],["EUKYO","Euro Kapital Yatırım"],
+  ["EUREN","Eurensan"],["EUYO","Euro Trend Yatırım"],["EYGYO","Eyg GYO"],
+  ["FADE","Fade Gıda"],["FENER","Fenerbahçe Futbol"],["FLAP","Flap Kongre Toplantı Hizmetleri"],
+  ["FMIZP","Federal-Mogul İzmit Piston"],["FONET","Fonet Bilgi Teknolojileri"],
+  ["FORMT","Format Matbaacılık"],["FORTE","Forte Bilgi İletişim"],["FRIGO","Frigo-Pak Gıda"],
+  ["FROTO","Ford Otosan"],["GARAN","Garanti BBVA"],["GARFA","Garanti Faktoring"],
+  ["GEDIK","Gedik Yatırım Menkul Değerler"],["GEDZA","Gediz Ambalaj"],["GENIL","Gen İlaç"],
+  ["GENTS","Genç Teknoloji"],["GEREL","Gersan Elektrik"],["GESAN","Girişim Elektrik"],
+  ["GIPTA","Gipta Ofis Kırtasiye"],["GLBMD","Global Menkul Değerler"],["GLCVY","Gelecek Varlık Yönetimi"],
+  ["GLRYH","Güler Yatırım Holding"],["GLYHO","Global Yatırım Holding"],["GMTAS","Gimat"],
+  ["GOKNR","Göknur Gıda"],["GOLTS","Göltaş Çimento"],["GOODY","Good-Year"],["GOZDE","Gözde Girişim"],
+  ["GRNYO","Garanti Yatırım Ortaklığı"],["GRSEL","Gürsel Turizm"],["GRTRK","Gentaş Genel Metal"],
+  ["GSDDE","GSD Denizcilik"],["GSDHO","GSD Holding"],["GSRAY","Galatasaray Sportif"],
+  ["GUBRF","Gübre Fabrikaları"],["GWIND","Galata Wind Enerji"],["GZNMI","Gezinomi Seyahat"],
+  ["HALKB","Halkbank"],["HATEK","Hateks Hatay Tekstil"],["HATSN","Hatay Sanayi"],
+  ["HDFGS","Hedef Girişim Sermayesi"],["HEDEF","Hedef Holding"],["HEKTS","Hektaş"],
+  ["HKTM","Hidropar Hareket Kontrol Teknolojileri"],["HLGYO","Halk GYO"],["HUBVC","Hub Girişim Sermayesi"],
+  ["HUNER","Hüner Yatırım Holding"],["HURGZ","Hürriyet Gazetecilik"],
+  ["ICBCT","ICBC Turkey Bank"],["ICUGS","İçtaş Sürdürülebilir Enerji"],["IDGYO","İdealist GYO"],
+  ["IEYHO","Işıklar Enerji ve Yapı"],["IHAAS","İhlas Haber Ajansı"],["IHEVA","İhlas Ev Aletleri"],
+  ["IHGZT","İhlas Gazetecilik"],["IHLAS","İhlas Holding"],["IHLGM","İhlas Gayrimenkul"],
+  ["IHYAY","İhlas Yayın Holding"],["IMASM","İmaş Makine"],["INDES","İndeks Bilgisayar"],
+  ["INFO","İnfo Yatırım Menkul Değerler"],["INGRM","Ingram Micro"],["INTEM","İntema İnşaat"],
+  ["INVEO","İnveo Yatırım Holding"],["INVES","İnvest-AZ Menkul Değerler"],["IPEKE","İpek Doğal Enerji"],
+  ["ISATR","İş Bankası (A)"],["ISBIR","İş Bir Holding"],["ISBTR","İş Bankası (B)"],
+  ["ISCTR","İş Bankası (C)"],["ISDMR","İskenderun Demir Çelik"],["ISFIN","İş Finansal Kiralama"],
+  ["ISGSY","İş Girişim Sermayesi"],["ISGYO","İş GYO"],["ISKPL","İşıklar Ambalaj"],
+  ["ISMEN","İş Yatırım Menkul Değerler"],["ISYAT","İş Yatırım Ortaklığı"],["ITTFH","İttifak Holding"],
+  ["IZENR","İzmir Demir Çelik Enerji"],["IZFAS","İzmir Fırça"],["IZMDC","İzmir Demir Çelik"],
+  ["JANTS","Jantsa Jant Sanayi"],["KAPLM","Kaplamin Ambalaj"],["KAREL","Karel Elektronik"],
+  ["KARSN","Karsan Otomotiv"],["KARTN","Kartonsan"],["KARYE","Kartonsan Yetkili"],
+  ["KATMR","Katmerciler Araç Üstü Ekipman"],["KAYSE","Kayseri Şeker"],["KCAER","Kocaer Çelik"],
+  ["KCHOL","Koç Holding"],["KENT","Kent Gıda"],["KERVN","Kervansaray Yatırım Holding"],
+  ["KERVT","Kerevitaş Gıda"],["KFEIN","Kafein Yazılım"],["KGYO","Körfez GYO"],["KIMMR","Kim Gıda"],
+  ["KLGYO","Kiler GYO"],["KLKIM","Kalekim"],["KLMSN","Klimasan Klima"],["KLNMA","Türkiye Kalkınma Bankası"],
+  ["KLRHO","Kiler Holding"],["KLSER","Kalsan Seramik"],["KLSYN","Kalesin"],["KMPUR","Kimpur Kimya"],
+  ["KNFRT","Konfrut Gıda"],["KONKA","Konka Holding"],["KONTR","Kontrolmatik Teknoloji"],
+  ["KONYA","Konya Çimento"],["KOPOL","Kopaş Kozmetik"],["KORDS","Kordsa"],["KOZAA","Koza Anadolu Metal"],
+  ["KOZAL","Koza Altın"],["KRDMA","Kardemir (A)"],["KRDMB","Kardemir (B)"],["KRDMD","Kardemir (D)"],
+  ["KRGYO","Körfez GYO"],["KRONT","Kron Teknoloji"],["KRPLS","Karplas Karton"],["KRSTL","Kristal Kola"],
+  ["KRTEK","Karsu Tekstil"],["KRVGD","Karavan Yatırım"],["KSTUR","Kuştur Kuşadası Turizm"],
+  ["KTLEV","Katılım Evim"],["KTSKR","Kütahya Şeker"],["KUTPO","Kütahya Porselen"],
+  ["KUYAS","Kuyumcukent Gayrimenkul"],["KZBGY","Kızılbük GYO"],["KZGYO","Kızılay GYO"],
+  ["LIDER","Lider Faktoring"],["LIDFA","Lider Faktoring"],["LILAK","Lila Kağıt"],
+  ["LINK","Link Bilgisayar"],["LKMNH","Lokman Hekim Sağlık"],["LOGO","Logo Yazılım"],
+  ["LRSHO","Lrn Yatırım"],["LUKSK","Lüks Kadife"],["MAALT","Marmaris Altınyunus"],
+  ["MACKO","Mackolik Bilgi Hizmetleri"],["MAGEN","Margün Enerji"],["MAKIM","Makim Makine"],
+  ["MAKTK","Makina Takım"],["MANAS","Manas Enerji"],["MARBL","Marble Mermer"],
+  ["MARKA","Marka Yatırım Holding"],["MARTI","Martı Otel"],["MAVI","Mavi Giyim"],
+  ["MEDTR","Meditera Tıbbi Malzeme"],["MEGAP","Mega Polietilen"],["MEGMT","Megamet Çelik"],
+  ["MEKAG","Mekag Sanayi"],["MEPET","Mepet Metro Petrol"],["MERCN","Mercan Kimya"],
+  ["MERIT","Merit Turizm"],["MERKO","Merko Gıda"],["METRO","Metro Holding"],["METUR","Metemtur Otelcilik"],
+  ["MGROS","Migros"],["MHRGY","Mahir GYO"],["MIATK","Mia Teknoloji"],["MIPAZ","Milpa"],
+  ["MMCAS","MMC Sanayi"],["MNDRS","Menderes Tekstil"],["MNDTR","Mondi Tire Kutsan"],
+  ["MOBTL","Mobitel Mobil İletişim"],["MOGAN","Mogan Enerji"],["MOPAS","Moparlar Otomotiv"],
+  ["MPARK","MLP Sağlık"],["MRGYO","Martı GYO"],["MRSHL","Marshall Boya"],["MSGYO","Mistral GYO"],
+  ["MTRKS","Matriks Bilgi Dağıtım"],["MTRYO","Metro Yatırım Ortaklığı"],["MZHLD","Mazhar Zorlu Holding"],
+  ["NATEN","Naturel Yenilenebilir Enerji"],["NETAS","Netaş Telekomünikasyon"],["NIBAS","Niğbaş Niğde Beton"],
+  ["NTGAZ","Naturelgaz"],["NTHOL","Net Holding"],["NUGYO","Nurol GYO"],["NUHCM","Nuh Çimento"],
+  ["OBASE","Obase Bilgisayar"],["ODAS","Odaş Elektrik"],["ODINE","Odine Solutions"],
+  ["OFSYM","Ofis Yem"],["ONCSM","Oncu Spor"],["ORCAY","Orçay Ortaköy Çay"],["ORGE","Orge Enerji Elektrik"],
+  ["ORMA","Orma Orman Mahsulleri"],["OSMEN","Osmanlı Menkul Değerler"],["OSTIM","Ostim Endüstriyel"],
+  ["OTKAR","Otokar"],["OYAKC","Oyak Çimento"],["OYAYO","Oyak Yatırım Ortaklığı"],["OYLUM","Oylum Sınai Yatırımlar"],
+  ["OYYAT","Oyak Yatırım Menkul Değerler"],["OZGYO","Özak GYO"],["OZKGY","Özak Gayrimenkul"],
+  ["OZRDN","Özerden Plastik"],["OZSUB","Özsu Balık Üretim"],["PAGYO","Panora GYO"],
+  ["PAMEL","Pamel Yenilenebilir Elektrik"],["PAPIL","Papilon Savunma"],["PARSN","Parsan"],
+  ["PASEU","Pasifik Eurasia Lojistik"],["PATEK","Patek Plastik"],["PCILT","PC İletişim Medya"],
+  ["PEHOL","Pera Gayrimenkul"],["PEKGY","Peker GYO"],["PENGD","Penguen Gıda"],["PENTA","Penta Teknoloji"],
+  ["PETKM","Petkim"],["PETUN","Pınar Et ve Un"],["PGSUS","Pegasus Hava Yolları"],["PINSU","Pınar Su"],
+  ["PKART","Plastikkart"],["PKENT","Petrokent Turizm"],["PLTUR","Plan-S Uydu"],["PNLSN","Panelsan Çatı Cephe"],
+  ["PNSUT","Pınar Süt"],["POLHO","Polisan Holding"],["POLTK","Politeknik Metal"],["PRDGS","Pardus Girişim"],
+  ["PRKAB","Türk Prysmian Kablo"],["PRKME","Park Elektrik Madencilik"],["PRZMA","Prizma Pres Matbaacılık"],
+  ["PSDTC","Pergamon Statüs Dış Ticaret"],["PSGYO","Pasifik GYO"],["QNBFB","QNB Finansbank"],
+  ["QNBFL","QNB Finansal Kiralama"],["QUAGR","Quagro Tarım"],["RALYH","Ral Yatırım Holding"],
+  ["RAYSG","Ray Sigorta"],["REEDR","Reeder Teknoloji"],["RGYAS","Reysaş GYO"],["RNPOL","Rainbow Polikarbonat"],
+  ["RODRG","Rodrigo Tekstil"],["ROYAL","Royal Halı"],["RTALB","RTA Laboratuvarları"],
+  ["RUBNS","Rubenis Tekstil"],["RYGYO","Reysaş GYO"],["RYSAS","Reysaş Taşımacılık"],
+  ["SAFKR","Safkar Ege Soğutma"],["SAHOL","Sabancı Holding"],["SAMAT","Saray Matbaacılık"],
+  ["SANEL","San-El Mühendislik"],["SANFM","Sanifoam"],["SANKO","Sanko Pazarlama"],["SARKY","Sarkuysan"],
+  ["SASA","Sasa Polyester"],["SAYAS","Say Reklamcılık"],["SDTTR","SDT Uzay ve Savunma"],
+  ["SEGYO","Servet GYO"],["SEKFK","Şeker Finansal Kiralama"],["SEKUR","Sekuro Plastik"],
+  ["SELEC","Selçuk Ecza Deposu"],["SELGD","Selçuk Gıda"],["SELVA","Selva Gıda"],
+  ["SEYKM","Seyitler Kimya"],["SILVR","Silverline Endüstri"],["SISE","Şişe Cam"],
+  ["SKBNK","Şekerbank"],["SKTAS","Söktaş"],["SMART","Smart Güneş"],["SMRTG","Smart Güneş Teknolojileri"],
+  ["SNGYO","Sinpaş GYO"],["SNICA","Sönmez Pamuklu"],["SNKRN","Senkron Güvenlik"],
+  ["SNPAM","Sönmez Filament"],["SODSN","Sodaş Sodyum"],["SOKE","Söke Un"],["SOKM","Şok Marketler"],
+  ["SONME","Sönmez Pamuklu"],["SRVGY","Servet GYO"],["SUMAS","Sumaş Suni Tahta"],["SUNTK","Suntek Tekstil"],
+  ["SURGY","Sürmenli GYO"],["SUWEN","Suwen Tekstil"],["TARKM","Tarkim Bitki Koruma"],["TATEN","Tatlıpınar Enerji"],
+  ["TATGD","Tat Gıda"],["TAVHL","TAV Havalimanları"],["TBORG","Türk Tuborg"],["TCELL","Turkcell"],
+  ["TCKRC","Türk Tekstil"],["TDGYO","Trabzon GYO"],["TEKTU","Tek-Art İnşaat"],["TERA","Tera Yatırım"],
+  ["TETMT","Tetamat Gıda"],["TEZOL","Tezol Kauçuk"],["TGSAS","Triga Yatırım"],["THYAO","Türk Hava Yolları"],
+  ["TKFEN","Tekfen Holding"],["TKNSA","Teknosa"],["TLMAN","Trabzon Liman"],["TMPOL","Temapol Polimer"],
+  ["TMSN","Tümosan Motor ve Traktör"],["TNZTP","Tinzar Tarım"],["TOASO","Tofaş Oto"],
+  ["TRCAS","Turcas Petrol"],["TRGYO","Torunlar GYO"],["TRILC","Türk İlaç ve Serum"],
+  ["TSGYO","TSKB GYO"],["TSKB","Türkiye Sınai Kalkınma Bankası"],["TSPOR","Trabzonspor Sportif"],
+  ["TTKOM","Türk Telekom"],["TTRAK","Türk Traktör"],["TUCLK","Tuğçelik Alüminyum"],["TUKAS","Tukaş"],
+  ["TUPRS","Tüpraş"],["TUREX","Turex Turizm"],["TURGG","Turkofset Grafik"],["TURSG","Türkiye Sigorta"],
+  ["UFUK","Ufuk Yatırım"],["ULAS","Ulaşlar Turizm"],["ULKER","Ülker Bisküvi"],["ULUFA","Ulusoy Un"],
+  ["ULUSE","Ulusoy Elektrik"],["ULUUN","Ulusoy Un"],["UMPAS","Umpaş Holding"],["UNLU","Ünlü Menkul Değerler"],
+  ["USAK","Uşak Seramik"],["UZERB","Uzertaş Boya"],["VAKBN","VakıfBank"],["VAKFN","Vakıf Finansal Kiralama"],
+  ["VAKKO","Vakko Tekstil"],["VANGD","Vanet Gıda"],["VBTYZ","VBT Yazılım"],["VERTU","Vertu Yatırım Holding"],
+  ["VERUS","Verusa Holding"],["VESBE","Vestel Beyaz Eşya"],["VESTL","Vestel"],["VKFYO","Vakıf Yatırım Ortaklığı"],
+  ["VKGYO","Vakıf GYO"],["VKING","Viking Kağıt"],["YAPRK","Yaprak Süt"],["YATAS","Yataş"],
+  ["YAYLA","Yayla Enerji"],["YBTAS","Yıbıtaş Yozgat İşçi Birliği"],["YESIL","Yeşil Yatırım Holding"],
+  ["YGGYO","Yeşil GYO"],["YGYO","Yeşil GYO"],["YKBNK","Yapı Kredi Bankası"],["YKSLN","Yükselen Çelik"],
+  ["YONGA","Yonga Mobilya"],["YUNSA","Yünsa"],["YYAPI","Yeşil Yapı Endüstri"],["YYLGD","Yayla Gıda"],
+  ["ZEDUR","Zedur Enerji"],["ZOREN","Zorlu Enerji"],["ZRGYO","Ziraat GYO"]
+];
+
+/* ---------- 2) Yardımcı fonksiyonlar ---------- */
+const rnd = (min,max)=>Math.random()*(max-min)+min;
+const fmt = (n,d=2)=>n.toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtVol = n => n>=1e9 ? (n/1e9).toFixed(2)+'B' : n>=1e6 ? (n/1e6).toFixed(2)+'M' : n>=1e3 ? (n/1e3).toFixed(1)+'K' : String(n);
+
+/* Her hisseye rastgele başlangıç durumu üret (mock state) */
+const state = {};
+BIST_STOCKS.forEach(([s,n])=>{
+  const base = rnd(2, 800);
+  const chg = rnd(-8, 8);
+  state[s] = {
+    sym:s, name:n,
+    price: base, prevPrice: base, chg: chg,
+    high: base*(1+rnd(0,0.04)), low: base*(1-rnd(0,0.04)),
+    vol: Math.floor(rnd(1e5, 5e7)),
+    vwap: base*(1+rnd(-0.01,0.01))
+  };
+});
+
+let selected = "THYAO";
+
+/* ---------- 3) Sol Panel: Hisse listesi ---------- */
+function renderStockList(filter=""){
+  const list = document.getElementById('stockList');
+  const f = filter.toUpperCase();
+  const rows = BIST_STOCKS
+    .filter(([s,n])=> s.includes(f) || n.toUpperCase().includes(f))
+    .map(([s,n])=>{
+      const st = state[s];
+      const cls = st.chg>=0 ? 'up-c' : 'down-c';
+      const arrow = st.chg>=0 ? '▲' : '▼';
+      return `<div class="stock-row ${s===selected?'active':''}" data-sym="${s}">
+        <div class="sym">${s}</div>
+        <div class="name">${n}</div>
+        <div class="meta">
+          <div>${fmt(st.price)}</div>
+          <div class="pct ${cls}">${arrow} ${fmt(Math.abs(st.chg))}%</div>
+        </div>
+      </div>`;
+    }).join("");
+  list.innerHTML = rows;
+  document.getElementById('stockCount').textContent = BIST_STOCKS.length;
+  list.querySelectorAll('.stock-row').forEach(r=>{
+    r.addEventListener('click',()=>{ selectSymbol(r.dataset.sym); });
+  });
+}
+
+/* ---------- 4) Kayan Fiyat Bandı (Ticker) ---------- */
+function renderTicker(){
+  // En popüler 40 hisseyi banda al, iki kez (sonsuz kayma için)
+  const top = ["THYAO","GARAN","AKBNK","ISCTR","YKBNK","ASELS","KCHOL","SAHOL","SISE","EREGL",
+               "BIMAS","TUPRS","FROTO","TOASO","KOZAL","KOZAA","PETKM","HEKTS","ASTOR","ENKAI",
+               "TCELL","TTKOM","MGROS","SOKM","ULKER","TAVHL","PGSUS","DOAS","ARCLK","VESTL",
+               "EKGYO","ALARK","HALKB","VAKBN","SASA","TKFEN","GUBRF","TUPRS","CCOLA","AEFES"];
+  const html = top.concat(top).map(s=>{
+    const st = state[s]; if(!st) return "";
+    const cls = st.chg>=0?'up':'down';
+    const arrow = st.chg>=0?'▲':'▼';
+    return `<div class="tick ${cls}">
+      <span class="sym">${s}</span>
+      <span class="price">${fmt(st.price)}</span>
+      <span class="chg">${arrow} ${fmt(Math.abs(st.chg))}%</span>
+    </div>`;
+  }).join("");
+  document.getElementById('tickerTrack').innerHTML = html;
+}
+
+/* ---------- 5) Mum Grafiği (Candlestick) verisi ---------- */
+function generateCandles(basePrice, count=80){
+  // Geometrik Brownian Motion benzeri simülasyon: gerçekçi mumlar üretir
+  const out = [];
+  let p = basePrice;
+  let t = new Date(); t.setMinutes(0,0,0); t = t.getTime() - count*60*60*1000;
+  for(let i=0;i<count;i++){
+    const open = p;
+    const drift = rnd(-0.015, 0.018);
+    const close = open*(1+drift);
+    const high = Math.max(open,close)*(1+rnd(0,0.012));
+    const low  = Math.min(open,close)*(1-rnd(0,0.012));
+    out.push({ x:new Date(t+i*60*60*1000), y:[+open.toFixed(2),+high.toFixed(2),+low.toFixed(2),+close.toFixed(2)] });
+    p = close;
+  }
+  return out;
+}
+
+/* Basit RSI hesaplama (14 periyot) — backend Python'da pandas/ta ile yapılacak */
+function calcRSI(candles, period=14){
+  const closes = candles.map(c=>c.y[3]);
+  const out = [];
+  for(let i=0;i<closes.length;i++){
+    if(i<period){ out.push({x:candles[i].x, y:null}); continue; }
+    let gains=0, losses=0;
+    for(let j=i-period+1;j<=i;j++){
+      const d = closes[j]-closes[j-1];
+      if(d>=0) gains+=d; else losses-=d;
+    }
+    const rs = (gains/period)/((losses/period)||1e-9);
+    const rsi = 100 - 100/(1+rs);
+    out.push({x:candles[i].x, y:+rsi.toFixed(2)});
+  }
+  return out;
+}
+
+/* SMA (Basit Hareketli Ortalama) */
+function calcSMA(candles, period=20){
+  const out=[];
+  for(let i=0;i<candles.length;i++){
+    if(i<period-1){ out.push({x:candles[i].x,y:null}); continue; }
+    let sum=0; for(let j=i-period+1;j<=i;j++) sum+=candles[j].y[3];
+    out.push({x:candles[i].x, y:+(sum/period).toFixed(2)});
+  }
+  return out;
+}
+
+/* ---------- 6) ApexCharts grafik kurulumu ---------- */
+let mainChart, rsiChart, currentCandles=[];
+
+function initCharts(){
+  currentCandles = generateCandles(state[selected].price);
+
+  mainChart = new ApexCharts(document.getElementById('chart'), {
+    chart:{ type:'candlestick', height:'100%', background:'transparent',
+            toolbar:{show:false}, animations:{enabled:false}, foreColor:'#8b97a8' },
+    theme:{mode:'dark'},
+    series:[
+      { name:'Fiyat', type:'candlestick', data:currentCandles },
+      { name:'SMA 20', type:'line', data:calcSMA(currentCandles,20) },
+      { name:'EMA 50', type:'line', data:calcSMA(currentCandles,50) },
+    ],
+    stroke:{ width:[1,1.5,1.5], curve:'smooth' },
+    colors:['#00d4ff','#ffb020','#7c5cff'],
+    plotOptions:{ candlestick:{ colors:{ upward:'#00ff88', downward:'#ff3366' }, wick:{useFillColor:true} } },
+    xaxis:{ type:'datetime', labels:{style:{colors:'#5b6675'}}, axisBorder:{color:'#1f2a37'}, axisTicks:{color:'#1f2a37'} },
+    yaxis:{ tooltip:{enabled:true}, labels:{style:{colors:'#5b6675'},formatter:v=>fmt(v)} },
+    grid:{ borderColor:'#1f2a37', strokeDashArray:3 },
+    tooltip:{ theme:'dark' },
+    legend:{ show:true, position:'top', horizontalAlign:'left', labels:{colors:'#8b97a8'} }
+  });
+  mainChart.render();
+
+  rsiChart = new ApexCharts(document.getElementById('chart-rsi'), {
+    chart:{ type:'line', height:140, background:'transparent', toolbar:{show:false}, sparkline:{enabled:false}, foreColor:'#8b97a8' },
+    theme:{mode:'dark'},
+    series:[{ name:'RSI(14)', data:calcRSI(currentCandles) }],
+    stroke:{ width:1.5, curve:'smooth' },
+    colors:['#00d4ff'],
+    xaxis:{ type:'datetime', labels:{show:false}, axisBorder:{show:false}, axisTicks:{show:false} },
+    yaxis:{ min:0, max:100, tickAmount:4, labels:{style:{colors:'#5b6675'}} },
+    grid:{ borderColor:'#1f2a37', strokeDashArray:3 },
+    annotations:{ yaxis:[
+      { y:70, borderColor:'#ff3366', strokeDashArray:4, label:{text:'70 Aşırı Alım', style:{color:'#fff',background:'#ff3366'}} },
+      { y:30, borderColor:'#00ff88', strokeDashArray:4, label:{text:'30 Aşırı Satım', style:{color:'#000',background:'#00ff88'}} }
+    ]},
+    tooltip:{theme:'dark'}
+  });
+  rsiChart.render();
+}
+
+/* ---------- 7) Sembol seçimi ---------- */
+function selectSymbol(sym){
+  selected = sym;
+  const st = state[sym];
+  document.getElementById('selSym').textContent = sym;
+  document.getElementById('selName').textContent = st.name;
+  document.getElementById('obSym').textContent = sym;
+  document.querySelectorAll('.stock-row').forEach(r=>r.classList.toggle('active', r.dataset.sym===sym));
+  // Yeni hisse için grafiği yeniden üret
+  currentCandles = generateCandles(st.price);
+  mainChart.updateSeries([
+    { name:'Fiyat', type:'candlestick', data:currentCandles },
+    { name:'SMA 20', type:'line', data:calcSMA(currentCandles,20) },
+    { name:'EMA 50', type:'line', data:calcSMA(currentCandles,50) },
+  ]);
+  rsiChart.updateSeries([{name:'RSI(14)', data:calcRSI(currentCandles)}]);
+  updateSelectedBar();
+  renderOrderBook();
+  renderTimeAndSales(true);
+  updateSignal();
+}
+
+/* ---------- 8) Üst sembol şeridi (canlı fiyat) ---------- */
+function updateSelectedBar(){
+  const st = state[selected];
+  const priceEl = document.getElementById('selPrice');
+  const dir = st.price >= st.prevPrice ? 'up' : 'down';
+  priceEl.textContent = fmt(st.price);
+  priceEl.classList.remove('flash-up','flash-down');
+  void priceEl.offsetWidth;
+  priceEl.classList.add(dir==='up'?'flash-up':'flash-down');
+
+  const chgEl = document.getElementById('selChg');
+  chgEl.textContent = (st.chg>=0?'+':'')+fmt(st.chg)+'%';
+  chgEl.className = 'big-chg '+(st.chg>=0?'up':'down');
+
+  document.getElementById('selHigh').textContent = fmt(st.high);
+  document.getElementById('selLow').textContent  = fmt(st.low);
+  document.getElementById('selVol').textContent  = fmtVol(st.vol);
+  document.getElementById('selVwap').textContent = fmt(st.vwap);
+}
+
+/* ---------- 9) Emir Defteri (Derinlik) ---------- */
+function renderOrderBook(){
+  const st = state[selected];
+  const mid = st.price;
+  const tick = Math.max(0.01, +(mid*0.0005).toFixed(2));
+  const levels = 10;
+
+  // Satış kademeleri (üstte, fiyatlar yüksekten düşüğe)
+  let asks = [];
+  for(let i=levels;i>=1;i--){
+    const px = +(mid + i*tick).toFixed(2);
+    const qty = Math.floor(rnd(100, 25000));
+    asks.push({px, qty, orders: Math.floor(rnd(1,30))});
+  }
+  // Alış kademeleri (altta)
+  let bids = [];
+  for(let i=1;i<=levels;i++){
+    const px = +(mid - i*tick).toFixed(2);
+    const qty = Math.floor(rnd(100, 25000));
+    bids.push({px, qty, orders: Math.floor(rnd(1,30))});
+  }
+  const maxQ = Math.max(...asks.map(a=>a.qty), ...bids.map(b=>b.qty));
+
+  document.getElementById('asks').innerHTML = asks.map(a=>{
+    const w = (a.qty/maxQ*100).toFixed(1);
+    return `<div class="ob-row ask">
+      <span>${fmtVol(a.qty)}</span>
+      <span class="px" style="text-align:center">${fmt(a.px)}</span>
+      <span style="text-align:right;color:var(--text-3)">${a.orders}</span>
+      <div class="bar" style="width:${w}%"></div>
+    </div>`;
+  }).join("");
+
+  document.getElementById('bids').innerHTML = bids.map(b=>{
+    const w = (b.qty/maxQ*100).toFixed(1);
+    return `<div class="ob-row bid">
+      <span>${fmtVol(b.qty)}</span>
+      <span class="px" style="text-align:center">${fmt(b.px)}</span>
+      <span style="text-align:right;color:var(--text-3)">${b.orders}</span>
+      <div class="bar" style="width:${w}%"></div>
+    </div>`;
+  }).join("");
+
+  const spread = +(asks[asks.length-1].px - bids[0].px).toFixed(2);
+  const spreadPct = (spread/mid*100).toFixed(3);
+  document.getElementById('spread').innerHTML =
+    `Spread: <b style="color:var(--text-1)">${fmt(spread)}</b> · %${spreadPct} · Mid: <b style="color:var(--accent)">${fmt(mid)}</b>`;
+}
+
+/* ---------- 10) Time & Sales (gerçekleşen işlemler) ---------- */
+const tnsBuffer = [];
+function renderTimeAndSales(reset=false){
+  if(reset) tnsBuffer.length = 0;
+  const st = state[selected];
+  // Her tikte 1-3 yeni işlem ekle
+  const adds = Math.floor(rnd(1,4));
+  for(let i=0;i<adds;i++){
+    const side = Math.random()>0.5 ? 'buy' : 'sell';
+    const px = +(st.price + rnd(-0.05, 0.05)).toFixed(2);
+    const qty = Math.floor(rnd(50, 5000));
+    const t = new Date();
+    tnsBuffer.unshift({side, px, qty, time:t.toLocaleTimeString('tr-TR')});
+  }
+  if(tnsBuffer.length>40) tnsBuffer.length = 40;
+  document.getElementById('tns').innerHTML = tnsBuffer.map(t=>`
+    <div class="tns-row ${t.side}">
+      <span class="time">${t.time}</span>
+      <span class="px" style="text-align:center">${fmt(t.px)}</span>
+      <span style="text-align:right">${fmtVol(t.qty)}</span>
+    </div>`).join("");
+}
+
+/* ---------- 11) AL-SAT Sinyal Üretici (basit algoritmik) ----------
+   Backend'de RSI + MACD + Trend birleşik puanlamasıyla yapılacak.
+   Burada demo amaçlı son RSI değerine göre sinyal üretiyoruz. */
+function updateSignal(){
+  const rsi = calcRSI(currentCandles).filter(p=>p.y!==null);
+  const last = rsi[rsi.length-1]?.y ?? 50;
+  const closes = currentCandles.map(c=>c.y[3]);
+  const trendUp = closes[closes.length-1] > closes[closes.length-10];
+
+  let label, cls, success;
+  if(last<30 && trendUp){ label="GÜÇLÜ AL"; cls="STRONG_BUY"; success=72; }
+  else if(last<45){ label="AL"; cls="BUY"; success=64; }
+  else if(last>70 && !trendUp){ label="GÜÇLÜ SAT"; cls="STRONG_SELL"; success=69; }
+  else if(last>55){ label="SAT"; cls="SELL"; success=58; }
+  else { label="NÖTR"; cls="NEUTRAL"; success=50; }
+
+  const badge = document.getElementById('signalBadge');
+  badge.textContent = label;
+  badge.className = 'signal-badge '+cls;
+  document.getElementById('signalDetail').textContent =
+    `RSI: ${last.toFixed(1)} · MACD: ${trendUp?'↑':'↓'} · Trend: ${trendUp?'Yükseliş':'Düşüş'} · Başarı oranı: %${success}`;
+  document.getElementById('signalTime').textContent = new Date().toLocaleTimeString('tr-TR');
+}
+
+/* ---------- 12) Canlı simülasyon döngüsü ----------
+   Her 1 saniyede tüm hisseleri hafifçe değiştir (gerçekçi tik).
+   Üretimde Python backend'den WebSocket ile gelecek. */
+function tick(){
+  // Tüm hisseleri güncelle
+  BIST_STOCKS.forEach(([s])=>{
+    const st = state[s];
+    st.prevPrice = st.price;
+    const move = rnd(-0.004, 0.004);
+    st.price = +(st.price*(1+move)).toFixed(2);
+    st.chg = +(st.chg + move*100*0.1).toFixed(2);
+    if(st.price>st.high) st.high = st.price;
+    if(st.price<st.low)  st.low  = st.price;
+    st.vol += Math.floor(rnd(0,5000));
+  });
+
+  // Seçili hissenin son mumunu güncelle
+  if(currentCandles.length){
+    const last = currentCandles[currentCandles.length-1];
+    const p = state[selected].price;
+    last.y[3] = +p.toFixed(2);
+    if(p>last.y[1]) last.y[1] = +p.toFixed(2);
+    if(p<last.y[2]) last.y[2] = +p.toFixed(2);
+    mainChart.updateSeries([
+      { name:'Fiyat', type:'candlestick', data:currentCandles },
+      { name:'SMA 20', type:'line', data:calcSMA(currentCandles,20) },
+      { name:'EMA 50', type:'line', data:calcSMA(currentCandles,50) },
+    ], false);
+  }
+
+  updateSelectedBar();
+  renderOrderBook();
+  renderTimeAndSales();
+  // Listeyi her 3 saniyede bir yeniden çiz (performans için)
+  if(Math.random()<0.3) renderStockList(document.getElementById('searchInput').value);
+}
+
+/* ---------- 13) Saat ---------- */
+function clockTick(){
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('tr-TR');
+}
+
+/* ---------- 14) Olay bağlantıları (event bindings) ---------- */
+document.getElementById('searchInput').addEventListener('input', e=>{
+  renderStockList(e.target.value);
+});
+document.querySelectorAll('.chart-toolbar .chip').forEach(c=>{
+  c.addEventListener('click',()=>{
+    // Aynı grup içinde toggle (zaman dilimi vs indikatör)
+    const group = Array.from(c.parentNode.children).slice(0, 5).includes(c) ? 'tf' : 'ind';
+    if(group==='tf'){
+      c.parentNode.querySelectorAll('.chip').forEach((x,i)=>{ if(i<5) x.classList.remove('active'); });
+      c.classList.add('active');
+    } else {
+      c.classList.toggle('active');
+    }
+  });
+});
+
+/* ---------- 15) Başlat ---------- */
+renderStockList();
+renderTicker();
+initCharts();
+selectSymbol("THYAO");
+updateSignal();
+setInterval(tick, 1000);
+setInterval(updateSignal, 5000);
+setInterval(clockTick, 1000);
+clockTick();
+</script>
+</body>
+</html>
